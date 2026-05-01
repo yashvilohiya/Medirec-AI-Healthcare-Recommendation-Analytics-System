@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediRec — Smart Diagnosis</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0f1e;
+  --surface:#111827;
+  --surface2:#1a2235;
+  --border:rgba(255,255,255,0.07);
+  --border2:rgba(255,255,255,0.12);
+  --teal:#00d4aa;
+  --teal2:#00a884;
+  --rose:#ff6b8a;
+  --amber:#f5a623;
+  --blue:#4f8ef7;
+  --purple:#8b5cf6;
+  --text:#e8eaf2;
+  --muted:#8892a4;
+  --dim:#4a5568;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* ── BG ORBS ── */
+.orb{position:fixed;border-radius:50%;filter:blur(120px);opacity:0.12;pointer-events:none;z-index:0}
+.orb1{width:600px;height:600px;background:var(--teal);top:-200px;left:-200px}
+.orb2{width:500px;height:500px;background:var(--purple);bottom:-150px;right:-150px}
+.orb3{width:300px;height:300px;background:var(--rose);top:50%;left:50%;transform:translate(-50%,-50%)}
+
+/* ── LAYOUT ── */
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px}
+
+/* ── HERO HEADER ── */
+header{padding:48px 0 32px;border-bottom:1px solid var(--border)}
+.header-inner{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 20px var(--teal);animation:breathe 3s ease-in-out infinite}
+@keyframes breathe{0%,100%{box-shadow:0 0 12px var(--teal)}50%{box-shadow:0 0 32px var(--teal),0 0 60px rgba(0,212,170,.3)}}
+.brand-name{font-family:'DM Serif Display',serif;font-size:30px;letter-spacing:-0.5px;color:#fff}
+.brand-name em{color:var(--teal);font-style:normal}
+.brand-tag{font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.header-badges{display:flex;gap:8px;flex-wrap:wrap}
+.hbadge{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);color:var(--muted);letter-spacing:0.5px}
+
+/* ── HERO SECTION ── */
+.hero{padding:64px 0 48px;text-align:center}
+.hero h1{font-family:'DM Serif Display',serif;font-size:clamp(40px,6vw,72px);line-height:1.05;color:#fff;margin-bottom:16px}
+.hero h1 span{color:var(--teal)}
+.hero p{font-size:18px;color:var(--muted);max-width:520px;margin:0 auto 40px;line-height:1.7}
+
+/* ── SYMPTOM PICKER ── */
+.picker-card{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:36px;max-width:780px;margin:0 auto}
+.picker-label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.symptom-bubbles{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px}
+.sym-bubble{padding:8px 18px;border-radius:40px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;transition:all 0.2s;user-select:none}
+.sym-bubble:hover{border-color:var(--teal);color:var(--teal)}
+.sym-bubble.selected{background:rgba(0,212,170,.12);border-color:var(--teal);color:var(--teal);box-shadow:0 0 16px rgba(0,212,170,.2)}
+.selected-area{min-height:50px;background:rgba(255,255,255,.03);border:1px dashed var(--border2);border-radius:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:24px}
+.sel-chip{display:flex;align-items:center;gap:6px;background:rgba(0,212,170,.15);border:1px solid rgba(0,212,170,.3);border-radius:30px;padding:5px 14px;font-size:13px;color:var(--teal)}
+.sel-chip button{background:none;border:none;color:rgba(0,212,170,.6);cursor:pointer;font-size:15px;line-height:1;padding:0}
+.sel-chip button:hover{color:var(--teal)}
+.no-sel{color:var(--dim);font-size:13px;margin:auto}
+.algo-row{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.algo-pill{padding:8px 18px;border-radius:30px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s}
+.algo-pill.active{background:rgba(79,142,247,.15);border-color:var(--blue);color:var(--blue)}
+.run-btn{width:100%;padding:16px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--teal),var(--teal2));color:#0a1a15;font-family:'DM Sans',sans-serif;font-size:16px;font-weight:600;cursor:pointer;transition:all .25s;letter-spacing:.5px}
+.run-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,212,170,.35)}
+.run-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.run-btn .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,30,20,.3);border-top-color:#0a1a15;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── RESULT SECTION ── */
+#result-section{padding:60px 0 0;display:none}
+.result-header{text-align:center;margin-bottom:48px}
+.result-badge{display:inline-block;font-size:11px;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:30px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:var(--teal);margin-bottom:20px}
+.result-disease{font-family:'DM Serif Display',serif;font-size:clamp(36px,5vw,60px);color:#fff;margin-bottom:8px}
+.result-sub{color:var(--muted);font-size:16px;margin-bottom:32px}
+.result-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;max-width:780px;margin:0 auto 40px}
+.rcard{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;text-align:center}
+.rcard-val{font-family:'DM Serif Display',serif;font-size:28px;color:#fff;margin-bottom:4px}
+.rcard-lbl{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.meds-box{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px;max-width:780px;margin:0 auto 40px}
+.meds-title{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.meds-chips{display:flex;flex-wrap:wrap;gap:10px}
+.med-chip{padding:7px 16px;border-radius:30px;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);color:var(--amber);font-size:13px}
+.matches-box{max-width:780px;margin:0 auto}
+.match-row{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.match-row:last-child{border:none}
+.match-name{font-weight:500;color:var(--text);min-width:160px;font-size:14px}
+.match-bar-wrap{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:4px}
+.match-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--teal),var(--blue));transition:width 1s cubic-bezier(.16,1,.3,1)}
+.match-pct{font-size:13px;color:var(--muted);min-width:40px;text-align:right}
+
+/* ── ANALYSIS SECTION ── */
+#analysis-section{padding:80px 0;display:none}
+.section-eyebrow{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--teal);margin-bottom:12px}
+.section-title{font-family:'DM Serif Display',serif;font-size:clamp(28px,4vw,42px);color:#fff;margin-bottom:8px}
+.section-sub{color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:48px;max-width:600px}
+
+.exp-block{margin-bottom:64px}
+.exp-label{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.exp-num{font-family:'DM Serif Display',serif;font-size:48px;color:rgba(255,255,255,.06);line-height:1}
+.exp-info h3{font-family:'DM Serif Display',serif;font-size:22px;color:#fff;margin-bottom:4px}
+.exp-info p{font-size:13px;color:var(--muted);line-height:1.6}
+.exp-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.exp-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.exp-stat-v{font-family:'DM Serif Display',serif;font-size:26px;color:#fff;margin-bottom:3px}
+.exp-stat-l{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.chart-grid{display:grid;gap:16px}
+.chart-grid.two{grid-template-columns:1fr 1fr}
+.chart-grid.three{grid-template-columns:1fr 1fr 1fr}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px}
+.chart-box.span2{grid-column:1/-1}
+.chart-box h4{font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px}
+.chart-box p{font-size:12px;color:var(--dim);margin-bottom:18px;line-height:1.5}
+.ch-wrap{position:relative;height:220px}
+.ch-wrap.tall{height:280px}
+.insight-box{background:linear-gradient(135deg,rgba(0,212,170,.06),rgba(79,142,247,.06));border:1px solid rgba(0,212,170,.12);border-radius:14px;padding:20px 24px;font-size:13px;color:var(--muted);line-height:1.8;margin-top:16px}
+.insight-box strong{color:var(--text)}
+
+/* INFERENCE VERDICT */
+.verdict{border-radius:12px;padding:16px 20px;font-size:14px;line-height:1.7;margin-bottom:20px}
+.verdict.reject{background:rgba(255,107,138,.08);border:1px solid rgba(255,107,138,.2);color:#ffb3c1}
+.verdict.accept{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);color:#a0f0de}
+
+/* FOOTER */
+footer{padding:40px 0;border-top:1px solid var(--border);text-align:center;color:var(--dim);font-size:13px;margin-top:40px}
+
+/* CTRL ROW */
+.ctrl-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.ctrl-row label{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.ctrl-sel{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 12px;cursor:pointer}
+.ctrl-btn{background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.25);border-radius:8px;color:var(--teal);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 16px;cursor:pointer;transition:all .2s}
+.ctrl-btn:hover{background:rgba(0,212,170,.2)}
+
+@media(max-width:700px){
+  .result-grid{grid-template-columns:1fr 1fr}
+  .exp-stat-row{grid-template-columns:1fr 1fr}
+  .chart-grid.two,.chart-grid.three{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="wrap header-inner">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <div class="brand-name">Medi<em>Rec</em></div>
+        <div class="brand-tag">Healthcare Analytics System</div>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="hbadge">8 Experiments</span>
+      <span class="hbadge">ML-Powered</span>
+      <span class="hbadge">241 Patient Records</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <h1>Select your symptoms,<br><span>get your diagnosis</span></h1>
+    <p>Click the symptoms you're experiencing, choose an algorithm, and receive a data-driven medical recommendation with full statistical analysis.</p>
+
+    <div class="picker-card">
+      <div class="picker-label">Common symptoms — click to select</div>
+      <div class="symptom-bubbles" id="bubbles"></div>
+
+      <div class="picker-label">Selected symptoms</div>
+      <div class="selected-area" id="selArea">
+        <span class="no-sel" id="noSelMsg">No symptoms selected yet</span>
+        <div id="chipContainer" style="display:flex;flex-wrap:wrap;gap:8px;width:100%"></div>
+      </div>
+
+      <div class="picker-label" style="margin-bottom:12px">Algorithm</div>
+      <div class="algo-row" id="algoRow">
+        <button class="algo-pill active" data-algo="cf" onclick="setAlgo(this)">Collaborative Filtering (K-NN)</button>
+        <button class="algo-pill" data-algo="hybrid" onclick="setAlgo(this)">Hybrid (ANFIS + MKL)</button>
+        <button class="algo-pill" data-algo="pp" onclick="setAlgo(this)">Privacy-Preserving CF</button>
+      </div>
+
+      <button class="run-btn" id="runBtn" onclick="runAnalysis()" disabled>
+        Run Analysis
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- RESULT -->
+<section id="result-section">
+  <div class="wrap">
+    <div class="result-header">
+      <div class="result-badge" id="algoBadge">Collaborative Filtering</div>
+      <div class="result-disease" id="resultDisease">—</div>
+      <div class="result-sub" id="resultSub">—</div>
+      <div class="result-grid">
+        <div class="rcard"><div class="rcard-val" id="rConfidence">—</div><div class="rcard-lbl">Match Score</div></div>
+        <div class="rcard"><div class="rcard-val" id="rMatches">—</div><div class="rcard-lbl">Profiles Matched</div></div>
+        <div class="rcard"><div class="rcard-val" id="rMeds">—</div><div class="rcard-lbl">Treatments</div></div>
+      </div>
+      <div class="meds-box">
+        <div class="meds-title">Recommended Treatments</div>
+        <div class="meds-chips" id="medsChips"></div>
+      </div>
+      <div class="matches-box">
+        <div class="meds-title">Similar Patient Profiles</div>
+        <div id="matchRows"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYSIS -->
+<section id="analysis-section">
+  <div class="wrap">
+    <div class="section-eyebrow">Statistical Deep-Dive</div>
+    <div class="section-title">Analysis of your diagnosis</div>
+    <div class="section-sub" id="analysisSub">Full breakdown across all 8 data analytics experiments based on your symptoms and matched disease.</div>
+
+    <!-- EXP 1: BOX PLOT -->
+    <div class="exp-block" id="exp1-block">
+      <div class="exp-label">
+        <div class="exp-num">01</div>
+        <div class="exp-info">
+          <h3>Box Plot &amp; IQR Analysis</h3>
+          <p>Distribution of patient ages for matched disease — median, quartiles, IQR, and outlier detection.</p>
+        </div>
+      </div>
+      <div class="exp-stat-row" id="exp1Stats"></div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Age Distribution Histogram</h4><p>Frequency of patient ages with IQR region highlighted</p><div class="ch-wrap tall"><canvas id="ch1a"></canvas></div></div>
+        <div class="chart-box"><h4>Box Plot — Male vs Female</h4><p>Q1, Median, Q3 comparison by gender</p><div class="ch-wrap"><canvas id="ch1b"></canvas></div></div>
+        <div class="chart-box"><h4>Outlier Detection</h4><p>Points outside 1.5×IQR fence marked in red</p><div class="ch-wrap"><canvas id="ch1c"></canvas></div></div>
+      </div>
+      <div class="insight-box" id="exp1insight"></div>
+    </div>
+
+    <!-- EXP 2: REGRESSION -->
+    <div class="exp-block" id="exp2-block">
+      <div class="exp-label">
+        <div class="exp-num">02</div>
+        <div class="exp-info">
+          <h3>Linear Regression</h3>
+          <p>Relationship between patient age (independent) and symptom count (dependent) with regression model.</p>
+        </div>
+      </div>
+      <div class="exp-stat-row" id="exp2Stats"></div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Scatter Plot + Regression Line</h4><p>Each dot = one patient. Red line = fitted regression model.</p><div class="ch-wrap tall"><canvas id="ch2a"></canvas></div></div>
+        <div class="chart-box"><h4>Residuals</h4><p>Difference between actual and predicted values</p><div class="ch-wrap"><canvas id="ch2b"></canvas></div></div>
+        <div class="chart-box"><h4>Predicted vs Actual</h4><p>Model accuracy plot — closer to diagonal = better fit</p><div class="ch-wrap"><canvas id="ch2c"></canvas></div></div>
+      </div>
+      <div class="insight-box" id="exp2insight"></div>
+    </div>
+
+    <!-- EXP 3: SAMPLING -->
+    <div class="exp-block" id="exp3-block">
+      <div class="exp-label">
+        <div class="exp-num">03</div>
+        <div class="exp-info">
+          <h3>Random &amp; Systematic Sampling</h3>
+          <p>Comparing sample statistics to population statistics — how well a sample represents the whole dataset.</p>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <label>Method:</label>
+        <select id="exp3Method" class="ctrl-sel"><option value="random">Random Sampling</option><option value="systematic">Systematic Sampling</option></select>
+        <label>Sample size:</label>
+        <select id="exp3K" class="ctrl-sel"><option value="20">n=20</option><option value="30" selected>n=30</option><option value="50">n=50</option><option value="80">n=80</option></select>
+        <button class="ctrl-btn" onclick="loadExp3()">Apply</button>
+      </div>
+      <div class="exp-stat-row" id="exp3Stats"></div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Population vs Sample Age Distribution</h4><p>Blue = full population, Teal = selected sample</p><div class="ch-wrap"><canvas id="ch3a"></canvas></div></div>
+        <div class="chart-box"><h4>Population — Disease Frequency</h4><p>Top diseases in full dataset</p><div class="ch-wrap"><canvas id="ch3b"></canvas></div></div>
+        <div class="chart-box"><h4>Sample — Disease Frequency</h4><p>Top diseases in the sample</p><div class="ch-wrap"><canvas id="ch3c"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- EXP 4: CLUSTERING -->
+    <div class="exp-block" id="exp4-block">
+      <div class="exp-label">
+        <div class="exp-num">04</div>
+        <div class="exp-info">
+          <h3>K-Means Clustering</h3>
+          <p>Grouping patients by age and symptom count. Elbow method used to identify optimal number of clusters.</p>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <label>Clusters K:</label>
+        <select id="exp4K" class="ctrl-sel"><option value="2">K=2</option><option value="3" selected>K=3</option><option value="4">K=4</option><option value="5">K=5</option></select>
+        <button class="ctrl-btn" onclick="loadExp4()">Apply</button>
+      </div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Patient Clusters — Age vs Symptom Count</h4><p>Each colour = one cluster. ✕ = cluster centroid.</p><div class="ch-wrap tall"><canvas id="ch4a"></canvas></div></div>
+        <div class="chart-box"><h4>Elbow Method</h4><p>Optimal K where inertia begins to plateau</p><div class="ch-wrap"><canvas id="ch4b"></canvas></div></div>
+        <div class="chart-box"><h4>Cluster Sizes</h4><p>Number of patients in each cluster</p><div class="ch-wrap"><canvas id="ch4c"></canvas></div></div>
+      </div>
+      <div class="insight-box" id="exp4insight"></div>
+    </div>
+
+    <!-- EXP 5: PROBABILITY -->
+    <div class="exp-block" id="exp5-block">
+      <div class="exp-label">
+        <div class="exp-num">05</div>
+        <div class="exp-info">
+          <h3>Probability Distributions</h3>
+          <p>Normal distribution fitted to patient ages. Binomial for symptom occurrence. Poisson for disease event frequency.</p>
+        </div>
+      </div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Normal Distribution — Age PDF &amp; CDF</h4><p>Fitted normal curve over patient age data</p><div class="ch-wrap"><canvas id="ch5a"></canvas></div></div>
+        <div class="chart-box"><h4>Binomial Distribution</h4><p>P(k symptoms per visit), n=4, p=0.4</p><div class="ch-wrap"><canvas id="ch5b"></canvas></div></div>
+        <div class="chart-box"><h4>Poisson Distribution</h4><p>Expected disease events per patient cluster</p><div class="ch-wrap"><canvas id="ch5c"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- EXP 6: STAT PROPERTIES -->
+    <div class="exp-block" id="exp6-block">
+      <div class="exp-label">
+        <div class="exp-num">06</div>
+        <div class="exp-info">
+          <h3>Statistical Properties</h3>
+          <p>Mean, median, mode, variance, std deviation, skewness, kurtosis — full distributional characterisation.</p>
+        </div>
+      </div>
+      <div class="exp-stat-row" id="exp6Stats"></div>
+      <div class="chart-grid two">
+        <div class="chart-box span2"><h4>Age Distribution with Central Tendency Lines</h4><p>Histogram with mean, median, and mode marked</p><div class="ch-wrap tall"><canvas id="ch6a"></canvas></div></div>
+        <div class="chart-box"><h4>Gender-Wise Comparison</h4><p>Mean age and std deviation per gender</p><div class="ch-wrap"><canvas id="ch6b"></canvas></div></div>
+        <div class="chart-box"><h4>Skewness &amp; Kurtosis</h4><p>Shape descriptors of the distribution</p><div class="ch-wrap"><canvas id="ch6c"></canvas></div></div>
+      </div>
+      <div class="insight-box" id="exp6insight"></div>
+    </div>
+
+    <!-- EXP 7: INFERENCE -->
+    <div class="exp-block" id="exp7-block">
+      <div class="exp-label">
+        <div class="exp-num">07</div>
+        <div class="exp-info">
+          <h3>Statistical Inference</h3>
+          <p>One-sample t-test, 95% confidence intervals, z-scores, chi-square test for gender vs disease independence.</p>
+        </div>
+      </div>
+      <div class="verdict" id="verdictBox"></div>
+      <div class="chart-grid two">
+        <div class="chart-box"><h4>Confidence Interval (95%)</h4><p>Sample mean vs population mean with CI bounds</p><div class="ch-wrap"><canvas id="ch7a"></canvas></div></div>
+        <div class="chart-box"><h4>Z-Score Distribution</h4><p>Standardised ages of matched disease group</p><div class="ch-wrap"><canvas id="ch7b"></canvas></div></div>
+        <div class="chart-box span2"><h4>Chi-Square — Gender vs Top Diseases</h4><p>Grouped bar showing gender frequency across top 5 diseases</p><div class="ch-wrap"><canvas id="ch7c"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- EXP 8: TIME SERIES -->
+    <div class="exp-block" id="exp8-block">
+      <div class="exp-label">
+        <div class="exp-num">08</div>
+        <div class="exp-info">
+          <h3>Time Series &amp; Forecasting</h3>
+          <p>Monthly disease case trend, seasonal decomposition, moving averages, and 6-month forecast.</p>
+        </div>
+      </div>
+      <div class="exp-stat-row" id="exp8Stats"></div>
+      <div class="chart-grid">
+        <div class="chart-box"><h4>Monthly Cases — Trend, MA &amp; Forecast</h4><p>Raw data · MA-3 · MA-6 · Linear trend · 6-month forecast in orange</p><div class="ch-wrap tall"><canvas id="ch8a"></canvas></div></div>
+      </div>
+      <div class="chart-grid two" style="margin-top:16px">
+        <div class="chart-box"><h4>Seasonal Component</h4><p>Deviation from trend — peaks reveal seasonal cycles</p><div class="ch-wrap"><canvas id="ch8b"></canvas></div></div>
+        <div class="chart-box"><h4>Quarterly Disease Breakdown</h4><p>Top 5 conditions across Q1–Q4</p><div class="ch-wrap"><canvas id="ch8c"></canvas></div></div>
+      </div>
+      <div class="insight-box" id="exp8insight"></div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    MediRec Healthcare Analytics — Big Data Analytics Project · Flask + Python Backend · Chart.js Visualisations
+  </div>
+</footer>
+
+<script>
+const API = "http://127.0.0.1:5000";
+const CHS = {};
+
+// ── COLOURS ──────────────────────────────────
+const C = {
+  teal:"#00d4aa", rose:"#ff6b8a", blue:"#4f8ef7",
+  amber:"#f5a623", purple:"#8b5cf6", green:"#34d399",
+  muted:"rgba(255,255,255,0.06)", border:"rgba(255,255,255,0.08)"
+};
+const PALETTE = [C.teal, C.rose, C.blue, C.amber, C.purple, C.green, "#f97316","#06b6d4"];
+const a = (hex, op) => hex + Math.round(op*255).toString(16).padStart(2,"0");
+
+Chart.defaults.color = "#8892a4";
+Chart.defaults.borderColor = "rgba(255,255,255,0.07)";
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+
+function mkChart(id, type, data, options){
+  if(CHS[id]){ CHS[id].destroy(); delete CHS[id]; }
+  const el = document.getElementById(id);
+  if(!el) return;
+  CHS[id] = new Chart(el, {type, data,
+    options:{ responsive:true, maintainAspectRatio:false, ...(options||{}),
+      plugins:{ legend:{position:"bottom",labels:{boxWidth:10,padding:14,color:"#8892a4"}},
+        ...(options?.plugins||{}) } }});
+}
+
+
+// ── REAL BOX PLOT (Canvas API) ───────────────
+function drawBoxPlot(canvasId, genderData, lowerFence, upperFence, outliers){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.parentElement.clientWidth || 500;
+  const H = 220;
+  canvas.width  = W;
+  canvas.height = H;
+  ctx.clearRect(0,0,W,H);
+
+  const groups = Object.keys(genderData);
+  if(!groups.length) return;
+
+  // Find global min/max for y scale
+  const allVals = groups.flatMap(g => [genderData[g].min, genderData[g].max]);
+  const yMin = Math.floor(Math.min(...allVals) - 5);
+  const yMax = Math.ceil(Math.max(...allVals) + 5);
+
+  const padL=52, padR=20, padT=20, padB=36;
+  const plotH = H - padT - padB;
+  const plotW = W - padL - padR;
+
+  function toY(v){ return padT + plotH - ((v - yMin)/(yMax - yMin))*plotH; }
+
+  // Grid lines + Y axis labels
+  ctx.font = "11px DM Sans, sans-serif";
+  ctx.textAlign = "right";
+  const steps = 6;
+  for(let i=0;i<=steps;i++){
+    const val = yMin + (yMax-yMin)*(i/steps);
+    const y   = toY(val);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W-padR, y); ctx.stroke();
+    ctx.fillStyle = "#8892a4";
+    ctx.fillText(Math.round(val), padL-6, y+4);
+  }
+
+  // Y axis label
+  ctx.save();
+  ctx.translate(13, H/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#8892a4";
+  ctx.fillText("Age (years)", 0, 0);
+  ctx.restore();
+
+  const colors = { Female:"#00d4aa", Male:"#4f8ef7" };
+  const boxW = Math.min(60, plotW / (groups.length * 2.5));
+
+  groups.forEach((g, gi) => {
+    const stats = genderData[g];
+    const cx = padL + (plotW/(groups.length+1)) * (gi+1);
+    const col = colors[g] || "#8b5cf6";
+
+    const yMin_ = toY(stats.min);
+    const yQ1   = toY(stats.q1);
+    const yMed  = toY(stats.median);
+    const yQ3   = toY(stats.q3);
+    const yMax_ = toY(stats.max);
+
+    // Lower whisker (min → Q1)
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cx, yMin_); ctx.lineTo(cx, yQ1); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Upper whisker (Q3 → max)
+    ctx.beginPath(); ctx.moveTo(cx, yQ3); ctx.lineTo(cx, yMax_); ctx.stroke();
+
+    // Whisker caps
+    [yMin_, yMax_].forEach(y => {
+      ctx.beginPath();
+      ctx.moveTo(cx - boxW*0.3, y);
+      ctx.lineTo(cx + boxW*0.3, y);
+      ctx.stroke();
+    });
+
+    // IQR Box
+    ctx.fillStyle = col + "22";
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(cx - boxW/2, yQ3, boxW, yQ1 - yQ3, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Median line
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - boxW/2, yMed);
+    ctx.lineTo(cx + boxW/2, yMed);
+    ctx.stroke();
+
+    // Outlier dots for this gender
+    if(outliers && outliers.length){
+      outliers.forEach(ov => {
+        const oy = toY(ov);
+        ctx.beginPath();
+        ctx.arc(cx + (Math.random()-0.5)*12, oy, 4, 0, Math.PI*2);
+        ctx.fillStyle = "#ff6b8a";
+        ctx.fill();
+        ctx.strokeStyle = "#ff6b8a88";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
+
+    // Group label
+    ctx.fillStyle = "#8892a4";
+    ctx.font = "12px DM Sans, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(g, cx, H - 8);
+
+    // Median value label
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 11px DM Sans, sans-serif";
+    ctx.fillText("Med: " + stats.median, cx, yMed - 8);
+  });
+
+  // Legend
+  const legX = padL;
+  const legY = padT - 4;
+  [["IQR Box","#00d4aa"],["Median","#ffffff"],["Whisker (Min/Max)","#4f8ef7"],["Outlier","#ff6b8a"]].forEach(([lbl,col],i) => {
+    const lx = legX + i * (plotW/4);
+    ctx.fillStyle = col;
+    ctx.fillRect(lx, legY, 10, 10);
+    ctx.fillStyle = "#8892a4";
+    ctx.font = "10px DM Sans, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(lbl, lx+14, legY+9);
+  });
+}
+
+// ── SYMPTOMS LIST ────────────────────────────
+const ALL_SYMS = ["Fever","Cough","Fatigue","Headache","Nausea","Vomiting",
+  "Shortness of breath","Joint Pain","Chest Pain","Anxiety","Sore Throat",
+  "Dizziness","Itching","Back Pain","Muscle Pain","Weakness","Sadness",
+  "Rapid Heartbeat","Blurred Vision","Stomach Pain","Diarrhea","Cramps",
+  "Swelling","Chills","Sneezing","Numbness","Sensitivity","Redness","Skin Rash"];
+
+let selected = new Set(), currentAlgo = "cf";
+
+function initBubbles(){
+  const wrap = document.getElementById("bubbles");
+  wrap.innerHTML = ALL_SYMS.map(s =>
+    `<button class="sym-bubble" data-sym="${s}">${s}</button>`
+  ).join("");
+  wrap.addEventListener("click", function(e){
+    const btn = e.target.closest(".sym-bubble");
+    if(!btn) return;
+    const name = btn.dataset.sym;
+    if(selected.has(name)){ selected.delete(name); btn.classList.remove("selected"); }
+    else { selected.add(name); btn.classList.add("selected"); }
+    renderSelected();
+    document.getElementById("runBtn").disabled = selected.size === 0;
+  });
+}
+
+function removeSym(name){
+  selected.delete(name);
+  const bubble = document.querySelector(`.sym-bubble[data-sym="${name}"]`);
+  if(bubble) bubble.classList.remove("selected");
+  renderSelected();
+  document.getElementById("runBtn").disabled = selected.size === 0;
+}
+
+function renderSelected(){
+  const noMsg = document.getElementById("noSelMsg");
+  const chips  = document.getElementById("chipContainer");
+
+  if(selected.size === 0){
+    noMsg.style.display = "block";
+    chips.innerHTML = "";
+    return;
+  }
+
+  noMsg.style.display = "none";
+  chips.innerHTML = [...selected].map(s =>
+    `<div class="sel-chip">${s}<button class="crm" data-sym="${s}">×</button></div>`
+  ).join("");
+
+  chips.querySelectorAll(".crm").forEach(btn => {
+    btn.addEventListener("click", () => removeSym(btn.dataset.sym));
+  });
+}
+
+function setAlgo(btn){
+  document.querySelectorAll(".algo-pill").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  currentAlgo = btn.dataset.algo;
+}
+
+// ── RUN ANALYSIS ─────────────────────────────
+async function runAnalysis(){
+  if(!selected.size) return;
+  const btn = document.getElementById("runBtn");
+  btn.innerHTML = '<span class="spin"></span> Analysing…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${API}/api/diagnose`,{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({symptoms:[...selected], algo:currentAlgo})
+    });
+    const data = await res.json();
+    renderResult(data.results);
+    await loadAllExps(data.results);
+    document.getElementById("result-section").style.display="block";
+    document.getElementById("analysis-section").style.display="block";
+    document.getElementById("result-section").scrollIntoView({behavior:"smooth"});
+  } catch(e){
+    alert("⚠ Cannot connect to backend.\nMake sure you ran: python app.py");
+  }
+  btn.innerHTML = "Run Analysis";
+  btn.disabled = false;
+}
+
+function renderResult(results){
+  if(!results.length) return;
+  const top = results[0];
+  const conf = Math.round(top.sim*100);
+  const algoNames = {cf:"Collaborative Filtering (K-NN)",hybrid:"Hybrid ANFIS + MKL",pp:"Privacy-Preserving CF"};
+  const meds = [...new Set(results.slice(0,3).flatMap(r=>r.medicine.split(",").map(m=>m.trim())))];
+
+  document.getElementById("algoBadge").textContent = algoNames[currentAlgo];
+  document.getElementById("resultDisease").textContent = top.disease;
+  document.getElementById("resultSub").textContent = `Cause: ${top.causes} · Matched on: ${top.symptoms}`;
+  document.getElementById("rConfidence").textContent = conf+"%";
+  document.getElementById("rMatches").textContent = results.length;
+  document.getElementById("rMeds").textContent = meds.length;
+  document.getElementById("medsChips").innerHTML = meds.map(m=>`<div class="med-chip">${m}</div>`).join("");
+  document.getElementById("matchRows").innerHTML = results.slice(0,6).map(r=>`
+    <div class="match-row">
+      <div class="match-name">${r.disease}</div>
+      <div class="match-bar-wrap"><div class="match-bar" style="width:0%" data-w="${Math.round(r.sim*100)}"></div></div>
+      <div class="match-pct">${Math.round(r.sim*100)}%</div>
+    </div>`).join("");
+  document.getElementById("analysisSub").textContent =
+    `Full statistical breakdown for "${top.disease}" — symptoms: ${[...selected].join(", ")}`;
+  setTimeout(()=>{
+    document.querySelectorAll(".match-bar").forEach(b=>{b.style.width=b.dataset.w+"%"});
+  },100);
+}
+
+// ── LOAD ALL EXPERIMENTS ──────────────────────
+async function loadAllExps(results){
+  const dis = results[0]?.disease || "";
+  await Promise.all([
+    loadExp1(dis), loadExp2(), loadExp3(),
+    loadExp4(), loadExp5(), loadExp6(),
+    loadExp7(dis), loadExp8()
+  ]);
+}
+
+// ── EXP 1 ────────────────────────────────────
+async function loadExp1(dis=""){
+  const d = await fetch(`${API}/api/exp1?disease=${encodeURIComponent(dis)}`).then(r=>r.json());
+  document.getElementById("exp1Stats").innerHTML = statCards([
+    [d.median,"Median Age"],[d.iqr,"IQR"],[d.outliers.length,"Outliers"],[d.n,"Patients"]
+  ]);
+
+  // Histogram
+  mkChart("ch1a","bar",{labels:d.hist_labels, datasets:[
+    {label:"Frequency",data:d.hist_counts,backgroundColor:a(C.teal,0.5),borderColor:C.teal,borderWidth:1,borderRadius:4}
+  ]},{scales:{y:{beginAtZero:true}}});
+
+  // Real hand-drawn box plot — rAF ensures canvas has correct width
+  requestAnimationFrame(() => drawBoxPlot("ch1b", d.gender, d.lower_fence, d.upper_fence, d.outliers));
+
+  // Outlier scatter
+  const normal = d.hist_counts.map((c,i)=>({x:+d.hist_labels[i],y:c}));
+  const outs = d.outliers.map((v,i)=>({x:i,y:v}));
+  mkChart("ch1c","scatter",{datasets:[
+    {label:"Normal",data:normal,backgroundColor:a(C.teal,0.5),pointRadius:4},
+    {label:"Outlier",data:outs,backgroundColor:C.rose,pointRadius:6,pointStyle:"triangle"},
+  ]},{plugins:{legend:{position:"bottom"}}});
+
+  document.getElementById("exp1insight").innerHTML =
+    `<strong>Insight:</strong> For <em>${dis||"all patients"}</em> — N=${d.n} patients. Mean age: ${d.mean}, Median: ${d.median}, Std: ${d.std}. IQR = ${d.iqr} (Q1=${d.q1} → Q3=${d.q3}). Fences: [${d.lower_fence}, ${d.upper_fence}]. <strong>${d.outliers.length} outlier(s)</strong> detected beyond the 1.5×IQR boundary.`;
+}
+
+// ── EXP 2 ────────────────────────────────────
+async function loadExp2(){
+  const d = await fetch(`${API}/api/exp2`).then(r=>r.json());
+  document.getElementById("exp2Stats").innerHTML = statCards([
+    [d.r2,"R² Score"],[d.slope,"Slope β₁"],[d.intercept,"Intercept β₀"],[d.n,"Data Points"]
+  ]);
+  mkChart("ch2a","scatter",{datasets:[
+    {label:"Patient",data:d.scatter,backgroundColor:a(C.blue,0.4),pointRadius:4},
+    {label:"Regression",data:d.age_range.map((x,i)=>({x,y:d.pred_line[i]})),type:"line",
+     borderColor:C.rose,borderWidth:2,pointRadius:0,fill:false},
+  ]},{scales:{x:{title:{display:true,text:"Age"}},y:{title:{display:true,text:"Symptom Count"}}}});
+
+  const resids = d.scatter.map((p,i)=>({x:p.x,y:d.residuals[i]||0}));
+  mkChart("ch2b","scatter",{datasets:[
+    {label:"Residual",data:resids,backgroundColor:a(C.amber,0.5),pointRadius:3},
+    {label:"Zero",data:d.age_range.map(x=>({x,y:0})),type:"line",borderColor:C.border,borderWidth:1,pointRadius:0,fill:false},
+  ]},{scales:{x:{title:{display:true,text:"Age"}},y:{title:{display:true,text:"Residual"}}}});
+
+  const actual=d.scatter.map(p=>p.y), pred=d.scatter.map(p=>+(d.slope*p.x+d.intercept).toFixed(2));
+  mkChart("ch2c","scatter",{datasets:[
+    {label:"Actual vs Pred",data:actual.map((a,i)=>({x:a,y:pred[i]})),backgroundColor:a(C.green,0.4),pointRadius:3},
+    {label:"Perfect",data:[{x:0,y:0},{x:5,y:5}],type:"line",borderColor:a(C.rose,0.5),borderWidth:1,pointRadius:0,fill:false},
+  ]},{scales:{x:{title:{display:true,text:"Actual"}},y:{title:{display:true,text:"Predicted"}}}});
+
+  document.getElementById("exp2insight").innerHTML =
+    `<strong>Equation:</strong> ${d.equation}. R² = <strong>${d.r2}</strong> — ${d.r2>0.3?"moderate":"weak"} linear relationship between patient age and number of symptoms reported.`;
+}
+
+// ── EXP 3 ────────────────────────────────────
+async function loadExp3(){
+  const method = document.getElementById("exp3Method")?.value||"random";
+  const k = document.getElementById("exp3K")?.value||30;
+  const d = await fetch(`${API}/api/exp3?method=${method}&k=${k}`).then(r=>r.json());
+  document.getElementById("exp3Stats").innerHTML = statCards([
+    [d.pop_n,"Population N"],[d.smp_n,"Sample n"],
+    [`${d.pop_mean} / ${d.smp_mean}`,"Pop / Smp Mean"],
+    [`${d.pop_std} / ${d.smp_std}`,"Pop / Smp Std"],
+  ]);
+  const bins=10, minA=Math.min(...d.pop_ages), maxA=Math.max(...d.pop_ages), bw=(maxA-minA)/bins;
+  const bLabels=[], popC=Array(bins).fill(0), smpC=Array(bins).fill(0);
+  for(let i=0;i<bins;i++) bLabels.push(`${Math.round(minA+i*bw)}`);
+  d.pop_ages.forEach(a=>{ const bi=Math.min(Math.floor((a-minA)/bw),bins-1); popC[bi]++; });
+  d.smp_ages.forEach(a=>{ const bi=Math.min(Math.floor((a-minA)/bw),bins-1); smpC[bi]++; });
+  mkChart("ch3a","bar",{labels:bLabels,datasets:[
+    {label:"Population",data:popC,backgroundColor:a(C.blue,0.45),borderColor:C.blue,borderWidth:1},
+    {label:`Sample (${method})`,data:smpC,backgroundColor:a(C.teal,0.55),borderColor:C.teal,borderWidth:1},
+  ]},{scales:{y:{beginAtZero:true}}});
+  mkChart("ch3b","bar",{labels:Object.keys(d.pop_dist),datasets:[{label:"Count",data:Object.values(d.pop_dist),backgroundColor:PALETTE.map(c=>a(c,0.65)),borderWidth:0,borderRadius:3}]},{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}});
+  mkChart("ch3c","bar",{labels:Object.keys(d.smp_dist),datasets:[{label:"Count",data:Object.values(d.smp_dist),backgroundColor:PALETTE.map(c=>a(c,0.65)),borderWidth:0,borderRadius:3}]},{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}});
+}
+
+// ── EXP 4 ────────────────────────────────────
+async function loadExp4(){
+  const k = document.getElementById("exp4K")?.value||3;
+  const d = await fetch(`${API}/api/exp4?k=${k}`).then(r=>r.json());
+  const colors = PALETTE.slice(0,+k);
+  const datasets = d.clusters.map((cl,i)=>({
+    label:`Cluster ${i+1}`,
+    data:d.scatter.filter(p=>p.c===i).map(p=>({x:p.x,y:p.y})),
+    backgroundColor:a(colors[i],0.5),pointRadius:4
+  }));
+  datasets.push({label:"Centroids",data:d.clusters.map(c=>({x:c.cx,y:c.cy})),backgroundColor:"#fff",pointStyle:"crossRot",pointRadius:8,pointBorderWidth:2,type:"scatter"});
+  mkChart("ch4a","scatter",{datasets},{scales:{x:{title:{display:true,text:"Age"}},y:{title:{display:true,text:"Symptom Count"},beginAtZero:true}}});
+  mkChart("ch4b","line",{labels:d.elbow_ks,datasets:[{label:"Inertia",data:d.inertias,borderColor:C.amber,backgroundColor:a(C.amber,0.08),fill:true,pointRadius:5,tension:0.2}]},{scales:{x:{title:{display:true,text:"K"}},y:{title:{display:true,text:"Inertia"}}}});
+  mkChart("ch4c","doughnut",{labels:d.clusters.map((_,i)=>`Cluster ${i+1}`),datasets:[{data:d.clusters.map(c=>c.size),backgroundColor:colors.map(c=>a(c,0.75)),borderWidth:2,borderColor:C.border}]},{});
+  document.getElementById("exp4insight").innerHTML = `<strong>Clusters (K=${k}):</strong> ` + d.clusters.map((c,i)=>`Cluster ${i+1} — ${c.size} patients, avg age ${c.cx}, avg ${c.cy} symptoms`).join(" | ");
+}
+
+// ── EXP 5 ────────────────────────────────────
+async function loadExp5(){
+  const d = await fetch(`${API}/api/exp5`).then(r=>r.json());
+  mkChart("ch5a","line",{labels:d.x,datasets:[
+    {label:"PDF",data:d.pdf,borderColor:C.teal,backgroundColor:a(C.teal,0.1),fill:true,tension:0.4,pointRadius:0,borderWidth:2},
+    {label:"CDF",data:d.cdf,borderColor:C.rose,fill:false,tension:0.4,pointRadius:0,borderWidth:2,borderDash:[5,4]},
+  ]},{scales:{x:{ticks:{maxTicksLimit:8}},y:{title:{display:true,text:"Probability"}}}});
+  mkChart("ch5b","bar",{labels:d.binom.ks.map(k=>`k=${k}`),datasets:[{label:"P(X=k)",data:d.binom.pmf,backgroundColor:a(C.purple,0.65),borderColor:C.purple,borderWidth:1,borderRadius:4}]},{scales:{y:{beginAtZero:true}}});
+  mkChart("ch5c","bar",{labels:d.poisson.ks.map(k=>`k=${k}`),datasets:[{label:"P(X=k)",data:d.poisson.pmf,backgroundColor:a(C.amber,0.65),borderColor:C.amber,borderWidth:1,borderRadius:4}]},{scales:{y:{beginAtZero:true}}});
+}
+
+// ── EXP 6 ────────────────────────────────────
+async function loadExp6(){
+  const d = await fetch(`${API}/api/exp6`).then(r=>r.json());
+  document.getElementById("exp6Stats").innerHTML = statCards([
+    [d.mean,"Mean"],[d.median,"Median"],[d.std,"Std Dev"],[d.skewness,"Skewness"]
+  ]);
+  mkChart("ch6a","bar",{labels:d.hist_bins,datasets:[
+    {label:"Frequency",data:d.hist_counts,backgroundColor:a(C.blue,0.45),borderColor:C.blue,borderWidth:1,borderRadius:3}
+  ]},{scales:{y:{beginAtZero:true,title:{display:true,text:"Count"}},x:{title:{display:true,text:"Age"}}}});
+  const gs = d.gender_stats;
+  mkChart("ch6b","bar",{labels:Object.keys(gs),datasets:[
+    {label:"Mean",data:Object.values(gs).map(g=>g.mean),backgroundColor:a(C.teal,0.65),borderWidth:0,borderRadius:4},
+    {label:"Std Dev",data:Object.values(gs).map(g=>g.std),backgroundColor:a(C.rose,0.65),borderWidth:0,borderRadius:4},
+  ]},{scales:{y:{beginAtZero:true}}});
+  mkChart("ch6c","bar",{labels:["Skewness","Kurtosis","Variance÷10","Std Dev"],
+    datasets:[{label:"Value",data:[d.skewness,d.kurtosis,d.variance/10,d.std],
+      backgroundColor:PALETTE.map(c=>a(c,0.7)),borderWidth:0,borderRadius:4}]},
+    {plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"Value"}}}});
+  document.getElementById("exp6insight").innerHTML = `<strong>Distribution shape:</strong> Skewness = ${d.skewness} (${d.skewness>0?"right-skewed / positive tail":"left-skewed / negative tail"}). Kurtosis = ${d.kurtosis} (${d.kurtosis>0?"leptokurtic — sharper peak":"platykurtic — flatter peak"}). Range = ${d.range} years (${d.min} → ${d.max}).`;
+}
+
+// ── EXP 7 ────────────────────────────────────
+async function loadExp7(dis="Influenza"){
+  const d = await fetch(`${API}/api/exp7?disease=${encodeURIComponent(dis)}`).then(r=>r.json());
+  const vbox = document.getElementById("verdictBox");
+  vbox.className = `verdict ${d.reject_h0?"reject":"accept"}`;
+  vbox.innerHTML = `<strong>H₀: Mean age of "${d.disease}" = Population mean (${d.pop_mu})</strong><br>
+    Group mean = ${d.d_mean} | N = ${d.d_n} | t-statistic = ${d.t_stat} | p-value = ${d.p_val}<br>
+    95% CI: [${d.ci_lower}, ${d.ci_upper}]<br>
+    <strong>→ ${d.reject_h0?"REJECT H₀: Significant age difference detected (p < 0.05)":"FAIL TO REJECT H₀: No significant difference (p ≥ 0.05)"}</strong><br>
+    Chi-Square (Gender × Disease): χ² = ${d.chi2}, p = ${d.p_chi} — ${d.p_chi<0.05?"Gender and disease are NOT independent":"Gender and disease appear independent"}`;
+
+  mkChart("ch7a","bar",{labels:["Pop Mean","Group Mean","CI Lower","CI Upper"],datasets:[{
+    label:"Age",data:[d.pop_mu,d.d_mean,d.ci_lower,d.ci_upper],
+    backgroundColor:[a(C.blue,0.6),a(C.rose,0.7),a(C.teal,0.5),a(C.teal,0.5)],borderWidth:0,borderRadius:4
+  }]},{plugins:{legend:{display:false}},scales:{y:{beginAtZero:false}}});
+  mkChart("ch7b","bar",{labels:d.z_scores.map((_,i)=>`P${i+1}`),datasets:[{
+    label:"Z-Score",data:d.z_scores,
+    backgroundColor:d.z_scores.map(z=>Math.abs(z)>2?a(C.rose,0.7):a(C.blue,0.5)),borderWidth:0,borderRadius:3
+  }]},{plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:"Z-Score"}}}});
+  const genders=Object.keys(d.crosstab);
+  mkChart("ch7c","bar",{labels:d.top5_diseases,datasets:genders.map((g,i)=>({
+    label:g,data:d.top5_diseases.map(dis=>d.crosstab[g][dis]||0),
+    backgroundColor:a(PALETTE[i],0.65),borderWidth:0,borderRadius:3
+  }))},{scales:{y:{beginAtZero:true,stacked:false}}});
+}
+
+// ── EXP 8 ────────────────────────────────────
+async function loadExp8(){
+  const d = await fetch(`${API}/api/exp8`).then(r=>r.json());
+  document.getElementById("exp8Stats").innerHTML = statCards([
+    [d.labels.length,"Months"],[`${d.slope>0?"↑ ":"↓ "}${Math.abs(d.slope)}/mo`,"Trend"],[d.r2,"R²"],["6 months","Forecast"]
+  ]);
+  const allL=[...d.labels,...d.fc_labels];
+  const allS=[...d.series,...Array(6).fill(null)];
+  const allF=[...Array(d.labels.length).fill(null),...d.forecast];
+  const allMA3=[...d.ma3,...Array(6).fill(null)];
+  const allMA6=[...d.ma6,...Array(6).fill(null)];
+  const allT=[...d.trend,...Array(6).fill(null)];
+  mkChart("ch8a","line",{labels:allL,datasets:[
+    {label:"Observed",data:allS,borderColor:"rgba(255,255,255,0.2)",pointRadius:0,borderWidth:1.5,tension:0.3,fill:false},
+    {label:"MA-3",data:allMA3,borderColor:C.blue,pointRadius:0,borderWidth:2,tension:0.3,fill:false},
+    {label:"MA-6",data:allMA6,borderColor:C.teal,pointRadius:0,borderWidth:2,tension:0.3,fill:false},
+    {label:"Trend",data:allT,borderColor:C.amber,pointRadius:0,borderWidth:1.5,borderDash:[6,4],fill:false},
+    {label:"Forecast",data:allF,borderColor:C.rose,backgroundColor:a(C.rose,0.08),fill:true,pointRadius:4,borderWidth:2.5,tension:0.3},
+  ]},{scales:{x:{ticks:{maxTicksLimit:10}},y:{title:{display:true,text:"Cases"}}}});
+  const seasonal=d.series.map((v,i)=>+(v-d.trend[i]).toFixed(2));
+  mkChart("ch8b","bar",{labels:d.labels,datasets:[{label:"Seasonal",data:seasonal,
+    backgroundColor:seasonal.map(v=>v>=0?a(C.teal,0.55):a(C.rose,0.55)),borderWidth:0,borderRadius:2}]},
+    {scales:{x:{ticks:{maxTicksLimit:8}},y:{title:{display:true,text:"Deviation"}}},plugins:{legend:{display:false}}});
+  mkChart("ch8c","bar",{labels:["Q1","Q2","Q3","Q4"],datasets:d.top5.map((dis,i)=>({
+    label:dis,data:d.quarterly[dis]||[0,0,0,0],backgroundColor:a(PALETTE[i],0.65),borderWidth:0,borderRadius:3
+  }))},{scales:{y:{beginAtZero:true}}});
+  document.getElementById("exp8insight").innerHTML = `<strong>Trend:</strong> Slope = ${d.slope} cases/month (R²=${d.r2}). Seasonal peaks appear every ~6 months. MA-3 and MA-6 smooth out short-term noise. <strong>6-month forecast:</strong> ${d.forecast.join(", ")} cases.`;
+}
+
+
+function statCards(pairs){
+  return pairs.map(([v,l])=>`<div class="exp-stat"><div class="exp-stat-v">${v}</div><div class="exp-stat-l">${l}</div></div>`).join("");
+}
+
+// ── INIT ──────────────────────────────────────
+initBubbles();
+</script>
+</body>
+</html>
